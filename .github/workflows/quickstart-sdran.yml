@@ -91,8 +91,8 @@ jobs:
           make k8s-install
           make 5gc-install
           make sdran-install
-          kubectl get pods -n aether-5gc
-          kubectl get pods -n sdran
+          kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
+          kubectl get pods -n sdran -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
 
       - name: Validate Results
         continue-on-error: false

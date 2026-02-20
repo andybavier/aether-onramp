@@ -63,8 +63,8 @@ amp:
   aether_roc:
     helm:
       local_charts: false
-      chart_ref: oci://ghcr.io/onosproject/charts/aether-roc-umbrella
-      chart_version: 2.1.37
+      chart_ref: oci://ghcr.io/andybavier/charts/aether-roc-umbrella
+      chart_version: 2.1.40
 
   atomix:
     helm:
