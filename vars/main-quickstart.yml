@@ -1,7 +1,3 @@
-global:
-  image:
-    registry: ghcr.io
-
 k8s:
   rke2:
     version: v1.24.17+rke2r1
