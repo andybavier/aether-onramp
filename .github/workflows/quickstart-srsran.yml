@@ -99,7 +99,7 @@ jobs:
           make aether-5gc-install
           sleep 10
           make aether-srsran-gnb-install
-          kubectl get pods -n aether-5gc
+          kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
           docker ps
           sleep 10
 

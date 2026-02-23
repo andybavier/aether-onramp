@@ -94,7 +94,7 @@ jobs:
           make aether-k8s-install
           make aether-5gc-install
           make aether-gnbsim-install
-          kubectl get pods -n aether-5gc
+          kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
           docker ps
 
       - name: Run gNBsim
