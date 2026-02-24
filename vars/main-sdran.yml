@@ -52,7 +52,7 @@ sdran:
   sdran:
     helm:
       local_charts: false
-      chart_ref: oci://ghcr.io/andybavier/charts/sd-ran
+      chart_ref: oci://ghcr.io/onosproject/charts/sd-ran
       chart_version: 1.5.2
     import:
       e2t: true
