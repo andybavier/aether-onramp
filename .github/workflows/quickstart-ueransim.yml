@@ -90,6 +90,9 @@ jobs:
         make aether-ueransim-install
       inspect_commands: |
         kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
+        ansible --version
+        docker version
+        docker info
         docker ps -a
       run_commands: |
         make aether-ueransim-run
@@ -103,7 +106,17 @@ jobs:
       log_prefix: ueransim
       artifact_name: ueransim-logs-${{ matrix.runner_label }}
       extra_log_commands: |
+        ansible --version > logs/ansible-version.log 2>&1 || echo "Failed to collect ansible version"
+        docker version > logs/docker-version.log 2>&1 || echo "Failed to collect docker version"
+        docker info > logs/docker-info.log 2>&1 || echo "Failed to collect docker info"
+        docker events --since "$(date -u -d '15 minutes ago' +%FT%TZ)" --until "$(date -u +%FT%TZ)" > logs/docker-events.log 2>&1 || echo "Failed to collect docker events"
         docker logs ueransim > logs/ueransim.log 2>&1 || echo "Failed to get ueransim container logs"
+        docker ps -a > logs/docker-ps.log 2>&1 || echo "Failed to collect docker ps"
+        docker inspect ueransim > logs/ueransim-inspect.log 2>&1 || echo "Failed to inspect ueransim container"
+        docker exec ueransim ps -ef > logs/ueransim-processes.log 2>&1 || echo "Failed to collect ueransim process list"
+        docker exec ueransim ip addr > logs/ueransim-container-ip-addr.log 2>&1 || echo "Failed to collect ueransim container interfaces"
+        cp /tmp/ueransim/nr-gnb.log logs/nr-gnb.log 2>/dev/null || echo "No nr-gnb.log found"
+        cp /tmp/ueransim/nr-ue.log logs/nr-ue.log 2>/dev/null || echo "No nr-ue.log found"
         ip addr > logs/ip-addr.log 2>&1 || echo "Failed to collect host interfaces"
         cp ueransim-ping.log logs/ueransim-ping.log 2>/dev/null || echo "No ueransim-ping.log found"
       cleanup_targets: aether-ueransim-uninstall aether-5gc-uninstall aether-k8s-uninstall

@@ -57,11 +57,19 @@
     container: "{{ ueransim.docker.container.name }}"
     detach: true
     argv:
-      - nr-gnb
-      - -c
-      - /opt/ueransim/config/custom-gnb.yaml
+      - /bin/bash
+      - -lc
+      - >-
+        echo "Starting nr-gnb at $(date -Is)" >> /opt/ueransim/config/nr-gnb.log;
+        exec nr-gnb -c /opt/ueransim/config/custom-gnb.yaml
+        >> /opt/ueransim/config/nr-gnb.log 2>&1
+  register: gnb_exec
   when: "inventory_hostname in groups['ueransim_nodes']"
   become: true
+
+- debug:
+    var: gnb_exec.exec_id
+  when: "inventory_hostname in groups['ueransim_nodes']"
 
 - pause:
     seconds: 5
@@ -71,31 +79,67 @@
     container: "{{ ueransim.docker.container.name }}"
     detach: true
     argv:
-      - nr-ue
-      - -c
-      - /opt/ueransim/config/custom-ue.yaml
+      - /bin/bash
+      - -lc
+      - >-
+        echo "Starting nr-ue at $(date -Is)" >> /opt/ueransim/config/nr-ue.log;
+        exec nr-ue -c /opt/ueransim/config/custom-ue.yaml
+        >> /opt/ueransim/config/nr-ue.log 2>&1
+  register: ue_exec
   when: "inventory_hostname in groups['ueransim_nodes']"
   become: true
+
+- debug:
+    var: ue_exec.exec_id
+  when: "inventory_hostname in groups['ueransim_nodes']"
 
 - pause:
     seconds: 5
 
 - name: Get UE IP address
-  command:
-    argv:
-      - ip
-      - -o
-      - -4
-      - addr
-      - show
-      - uesimtun0
-  register: ue_ip_result
-  retries: 5
-  delay: 2
-  until:
-    - ue_ip_result.rc == 0
-    - (ue_ip_result.stdout | trim) != ''
-  changed_when: false
+  block:
+    - name: Get UE IP address
+      command:
+        argv:
+          - ip
+          - -o
+          - -4
+          - addr
+          - show
+          - uesimtun0
+      register: ue_ip_result
+      retries: 5
+      delay: 2
+      until:
+        - ue_ip_result.rc == 0
+        - (ue_ip_result.stdout | trim) != ''
+      changed_when: false
+  rescue:
+    - name: collect UERANSIM process diagnostics
+      community.docker.docker_container_exec:
+        container: "{{ ueransim.docker.container.name }}"
+        argv:
+          - /bin/bash
+          - -lc
+          - >-
+            echo "=== ps ===";
+            ps -ef;
+            echo "=== ip addr ===";
+            ip addr;
+            echo "=== nr-gnb.log ===";
+            cat /opt/ueransim/config/nr-gnb.log 2>/dev/null || true;
+            echo "=== nr-ue.log ===";
+            cat /opt/ueransim/config/nr-ue.log 2>/dev/null || true
+      register: ueransim_diagnostics
+      failed_when: false
+      changed_when: false
+      become: true
+
+    - debug:
+        var: ueransim_diagnostics.stdout_lines
+
+    - fail:
+        msg: "UERANSIM did not create uesimtun0. See UERANSIM diagnostics above and CI artifacts."
   when: "inventory_hostname in groups['ueransim_nodes']"
 
 - set_fact:
