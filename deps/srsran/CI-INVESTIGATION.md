@@ -17,7 +17,8 @@ The upstream OnRamp fix is tracked in
 | `rel-0.7.0` | `rel-0.7.0` | Fail: UE never attaches | [run 27037171597](https://github.com/andybavier/aether-onramp/actions/runs/27037171597) |
 | `rel-0.5.0` | `rel-0.5.0` | Fail: UE exits with `SIGILL` | [run 27039123397](https://github.com/andybavier/aether-onramp/actions/runs/27039123397) |
 | `rel-0.5.0` | `rel-0.4.0` | Fail: UE never attaches | [run 27039664293](https://github.com/andybavier/aether-onramp/actions/runs/27039664293) |
-| `rel-0.5.0` with single lower-PHY profile | `rel-0.4.0` | Pending | Test branch |
+| `rel-0.5.0` with single lower-PHY profile | `rel-0.4.0` | Fail: UE never attaches | [run 27040783982](https://github.com/andybavier/aether-onramp/actions/runs/27040783982) |
+| `rel-0.8.0` with single lower-PHY profile | `rel-0.4.0` | Pending | Test branch |
 
 ## Timeline
 
@@ -30,6 +31,8 @@ The upstream OnRamp fix is tracked in
 - June 5, 2026: restoring both images to `rel-0.4.0` made CI pass.
 - June 5, 2026: testing `rel-0.5.0` exposed two separate failures described
   below.
+- June 5, 2026: forcing the `rel-0.5.0` gNB to use the single lower-PHY
+  execution profile did not restore UE attachment.
 
 ## Confirmed Findings
 
@@ -81,8 +84,10 @@ Waiting PHY to initialize ... done!
 Attaching UE...
 ```
 
-The tunnel never appears. This demonstrates that the `rel-0.5.0` gNB has an
-interoperability problem independent of the `rel-0.5.0` UE portability issue.
+The tunnel never appears. Forcing the gNB to use the single lower-PHY
+execution profile produces the same result. This demonstrates that the
+`rel-0.5.0` gNB has an interoperability problem independent of the
+`rel-0.5.0` UE run and is not fixed merely by reducing lower-PHY concurrency.
 
 ## Container Build Changes
 
@@ -114,6 +119,10 @@ The `rel-0.7.0` labels identify:
   `d2f4b70dda8e2c557d5b05a0ac5f92dbddda19bc`
 - UE ref `release_23_11`, commit
   `eea87b1d893ae58e0b08bc381730c502024ae71f`
+
+The `rel-0.8.0` gNB was rebuilt from the same `release_25_10` commit,
+`d2f4b70dda8e2c557d5b05a0ac5f92dbddda19bc`. Testing it checks container
+build changes since `rel-0.7.0`, not a newer upstream gNB revision.
 
 The OnRamp ZMQ configuration and container launch tasks were unchanged when
 the images moved from `rel-0.4.0` to `rel-0.7.0`.
@@ -158,7 +167,7 @@ all-`rel-0.5.0` test, `community.docker.docker_container_exec` returned no
 
 ## Next Experiments
 
-- Run the pending `rel-0.5.0` gNB test with
+- Run the pending `rel-0.8.0` gNB test with the known-good `rel-0.4.0` UE and
   `expert_execution.threads.lower_phy.execution_profile: single`.
 - Build a UE image with automatic ISA detection disabled or with an explicit
   conservative x86-64 target, then test it repeatedly across hosted runners.
