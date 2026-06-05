@@ -20,6 +20,11 @@ ru_sdr:
   tx_gain: 75                       # Transmit gain of the RF might need to adjusted to the given situation.
   rx_gain: 75                       # Receive gain of the RF might need to adjusted to the given situation.
 
+expert_execution:
+  threads:
+    lower_phy:
+      execution_profile: single     # Reduce lower-PHY CPU pressure for ZMQ simulation.
+
 cell_cfg:
   dl_arfcn: 368500                  # ARFCN of the downlink carrier (center frequency).
   band: 3                           # The NR band.
