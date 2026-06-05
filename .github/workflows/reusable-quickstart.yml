@@ -143,7 +143,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact_name }}
-          path: logs/*.log
+          path: |
+            logs/*.log
+            logs/*.pcap
           if-no-files-found: ignore
 
       - name: Cleanup

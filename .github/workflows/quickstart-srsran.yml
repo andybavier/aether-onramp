@@ -51,5 +51,9 @@ jobs:
         docker logs srsran-gnb > logs/srsran_gnb.log 2>&1 || echo "Failed to get srsran-gnb logs"
         docker logs rfsim5g-srsran-nr-ue > logs/srsran_ue.log 2>&1 || echo "Failed to get srsran-nr-ue logs"
         docker exec rfsim5g-srsran-nr-ue cat /tmp/ue.log > logs/srsran_ue_internal.log 2>&1 || echo "Failed to get internal srsRAN UE logs"
+        docker cp srsran-gnb:/tmp/gnb_mac.pcap logs/srsran_gnb_mac.pcap || echo "Failed to get gNB MAC PCAP"
+        docker cp srsran-gnb:/tmp/gnb_ngap.pcap logs/srsran_gnb_ngap.pcap || echo "Failed to get gNB NGAP PCAP"
+        docker cp rfsim5g-srsran-nr-ue:/tmp/ue_mac_nr.pcap logs/srsran_ue_mac_nr.pcap || echo "Failed to get UE MAC-NR PCAP"
+        docker cp rfsim5g-srsran-nr-ue:/tmp/ue_nas.pcap logs/srsran_ue_nas.pcap || echo "Failed to get UE NAS PCAP"
       cleanup_targets: aether-srsran-uesim-stop aether-srsran-gnb-uninstall aether-5gc-uninstall aether-k8s-uninstall
     secrets: inherit

@@ -48,11 +48,11 @@ cell_cfg:
 
 log:
   filename: stdout                  # Path of the log file.
-  all_level: info                   # Logging level applied to all layers.
-  hex_max_size: 0
+  all_level: debug                  # Capture PHY/MAC/RRC detail for the version compatibility test.
+  hex_max_size: 64
 
 pcap:
-  mac_enable: false                 # Set to true to enable MAC-layer PCAPs.
+  mac_enable: enable                # Capture MAC signaling for attachment diagnosis.
   mac_filename: /tmp/gnb_mac.pcap   # Path where the MAC PCAP is stored.
-  ngap_enable: false                # Set to true to enable NGAP PCAPs.
+  ngap_enable: enable               # Capture core signaling for attachment diagnosis.
   ngap_filename: /tmp/gnb_ngap.pcap # Path where the NGAP PCAP is stored.
