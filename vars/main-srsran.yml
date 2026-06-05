@@ -46,9 +46,10 @@ core:
 srsran:
   docker:
     container:
-      # Test the next release after the known-good rel-0.4.0 image pair.
+      # Test the rel-0.5.0 gNB with the known-good UE; the 0.5.0 UE
+      # crashes with SIGILL on GitHub-hosted runners.
       gnb_image: aetherproject/srsran-gnb:rel-0.5.0
-      ue_image: aetherproject/srsran-ue:rel-0.5.0
+      ue_image: aetherproject/srsran-ue:rel-0.4.0
     network:
       name: host
   simulation: true
