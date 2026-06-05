@@ -18,7 +18,8 @@ The upstream OnRamp fix is tracked in
 | `rel-0.5.0` | `rel-0.5.0` | Fail: UE exits with `SIGILL` | [run 27039123397](https://github.com/andybavier/aether-onramp/actions/runs/27039123397) |
 | `rel-0.5.0` | `rel-0.4.0` | Fail: UE never attaches | [run 27039664293](https://github.com/andybavier/aether-onramp/actions/runs/27039664293) |
 | `rel-0.5.0` with single lower-PHY profile | `rel-0.4.0` | Fail: UE never attaches | [run 27040783982](https://github.com/andybavier/aether-onramp/actions/runs/27040783982) |
-| `rel-0.8.0` with single lower-PHY profile | `rel-0.4.0` | Pending | Test branch |
+| `rel-0.8.0` with single lower-PHY profile | `rel-0.4.0` | Fail: no cell acquisition | [run 27041735556](https://github.com/andybavier/aether-onramp/actions/runs/27041735556) |
+| `rel-0.4.0` with debug diagnostics | `rel-0.4.0` | Pending baseline | Test branch |
 
 ## Timeline
 
@@ -88,6 +89,23 @@ The tunnel never appears. Forcing the gNB to use the single lower-PHY
 execution profile produces the same result. This demonstrates that the
 `rel-0.5.0` gNB has an interoperability problem independent of the
 `rel-0.5.0` UE run and is not fixed merely by reducing lower-PHY concurrency.
+
+### `rel-0.8.0` gNB diagnostics
+
+The debug-instrumented `rel-0.8.0` gNB and `rel-0.4.0` UE run locates the
+failure before random access:
+
+- the gNB connects to the AMF and activates cell scheduling;
+- the UE switches NAS into `DEREGISTERED/PLMN-SEARCH`;
+- the UE PHY remains in `IDLE`;
+- the UE records no synchronization, SSB detection, cell selection, or
+  PRACH transmission;
+- the gNB records no PRACH or other UE radio activity; and
+- the MAC-NR, NAS, MAC, and NGAP captures contain no UE packets.
+
+The immediate problem is therefore initial cell acquisition over the ZMQ
+sample stream, not authentication, PDU-session establishment, or tunnel
+creation.
 
 ## Container Build Changes
 
@@ -167,8 +185,9 @@ all-`rel-0.5.0` test, `community.docker.docker_container_exec` returned no
 
 ## Next Experiments
 
-- Run the pending `rel-0.8.0` gNB test with the known-good `rel-0.4.0` UE and
-  `expert_execution.threads.lower_phy.execution_profile: single`.
+- Capture a debug-instrumented `rel-0.4.0`/`rel-0.4.0` baseline and compare
+  its derived SSB parameters and first successful UE synchronization events
+  with the `rel-0.8.0` failure.
 - Build a UE image with automatic ISA detection disabled or with an explicit
   conservative x86-64 target, then test it repeatedly across hosted runners.
 - Build the gNB from the last known-compatible upstream revision while

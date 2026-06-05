@@ -48,9 +48,10 @@ jobs:
       log_prefix: srsran
       artifact_name: srsran-logs
       extra_log_commands: |
+        docker stop --time 10 rfsim5g-srsran-nr-ue srsran-gnb || echo "Failed to stop srsRAN containers"
         docker logs srsran-gnb > logs/srsran_gnb.log 2>&1 || echo "Failed to get srsran-gnb logs"
         docker logs rfsim5g-srsran-nr-ue > logs/srsran_ue.log 2>&1 || echo "Failed to get srsran-nr-ue logs"
-        docker exec rfsim5g-srsran-nr-ue cat /tmp/ue.log > logs/srsran_ue_internal.log 2>&1 || echo "Failed to get internal srsRAN UE logs"
+        docker cp rfsim5g-srsran-nr-ue:/tmp/ue.log logs/srsran_ue_internal.log || echo "Failed to get internal srsRAN UE logs"
         docker cp srsran-gnb:/tmp/gnb_mac.pcap logs/srsran_gnb_mac.pcap || echo "Failed to get gNB MAC PCAP"
         docker cp srsran-gnb:/tmp/gnb_ngap.pcap logs/srsran_gnb_ngap.pcap || echo "Failed to get gNB NGAP PCAP"
         docker cp rfsim5g-srsran-nr-ue:/tmp/ue_mac_nr.pcap logs/srsran_ue_mac_nr.pcap || echo "Failed to get UE MAC-NR PCAP"
