@@ -19,7 +19,8 @@ The upstream OnRamp fix is tracked in
 | `rel-0.5.0` | `rel-0.4.0` | Fail: UE never attaches | [run 27039664293](https://github.com/andybavier/aether-onramp/actions/runs/27039664293) |
 | `rel-0.5.0` with single lower-PHY profile | `rel-0.4.0` | Fail: UE never attaches | [run 27040783982](https://github.com/andybavier/aether-onramp/actions/runs/27040783982) |
 | `rel-0.8.0` with single lower-PHY profile | `rel-0.4.0` | Fail: no cell acquisition | [run 27041735556](https://github.com/andybavier/aether-onramp/actions/runs/27041735556) |
-| `rel-0.4.0` with debug diagnostics | `rel-0.4.0` | Pending baseline | Test branch |
+| `rel-0.4.0` with debug diagnostics | `rel-0.4.0` | Pass: complete attachment | [run 27042709986](https://github.com/andybavier/aether-onramp/actions/runs/27042709986) |
+| Current Dockerfile built from gNB commit `2be82d8` | `rel-0.4.0` | Pending | Test branch |
 
 ## Timeline
 
@@ -34,6 +35,11 @@ The upstream OnRamp fix is tracked in
   below.
 - June 5, 2026: forcing the `rel-0.5.0` gNB to use the single lower-PHY
   execution profile did not restore UE attachment.
+- June 5, 2026: a debug-instrumented `rel-0.4.0` baseline passed and exposed
+  a ZMQ-specific lower-PHY execution change in the newer gNB.
+- June 5, 2026: the current `srsRAN-docker` Dockerfile successfully built
+  known-good gNB commit `2be82d8` as
+  `ghcr.io/andybavier/srsran-gnb:test-2be82d8`.
 
 ## Confirmed Findings
 
@@ -107,6 +113,36 @@ The immediate problem is therefore initial cell acquisition over the ZMQ
 sample stream, not authentication, PDU-session establishment, or tunnel
 creation.
 
+### Debug baseline and lower-PHY regression
+
+The debug-instrumented `rel-0.4.0` baseline used the same derived RF and SSB
+parameters as the failed `rel-0.8.0` run, but its sample stream started
+immediately:
+
+- the `rel-0.4.0` gNB reported `Lower PHY in executor blocking mode`;
+- the gNB recorded 13,038 slot indications;
+- the UE recorded 13,035 sample receptions; and
+- cell detection, PRACH, RRC setup, registration, and tunnel creation all
+  completed.
+
+By contrast, the `rel-0.8.0` gNB reported
+`Lower PHY in executor sequential baseband mode`, recorded no slot
+indications, and supplied no samples to the UE.
+
+The exact upstream source revisions explain the mode change. At commit
+`2be82d8`, `fill_sdr_worker_manager_config()` maps the ZMQ driver to the
+internal `lower_phy_thread_profile::blocking` profile. At commit `d2f4b70`,
+the same ZMQ special case maps it to
+`lower_phy_thread_profile::sequential`. This mapping overrides the
+user-visible `single`, `dual`, or `triple` configuration, so forcing
+`execution_profile: single` cannot reproduce the old ZMQ behavior.
+The change was introduced by upstream commit `eee28f964`
+(`ru: review RU SDR execution`).
+
+This is direct evidence that the attachment regression is caused by the
+newer gNB's ZMQ lower-PHY execution path rather than by RF configuration,
+SSB derivation, UE/gNB version skew, or insufficient startup time.
+
 ## Container Build Changes
 
 The sibling `srsRAN-docker` repository has no `v0.4.0` Git tag. Its release
@@ -177,17 +213,22 @@ all-`rel-0.5.0` test, `community.docker.docker_container_exec` returned no
    risk that needs a controlled reproduction.
 3. The `rel-0.5.0` gNB does not interoperate with the known-good `rel-0.4.0`
    UE using the current ZMQ configuration.
-4. Pinning both OnRamp images to `rel-0.4.0` is the appropriate short-term
+4. The newer gNB forces ZMQ onto the sequential lower-PHY executor path,
+   while the known-good gNB forces ZMQ onto its internal blocking path.
+5. Pinning both OnRamp images to `rel-0.4.0` is the appropriate short-term
    recovery.
-5. The durable fixes belong in `srsRAN-docker`: use reproducible upstream
+6. The durable fixes belong in `srsRAN-docker` and srsRAN Project: restore
+   working ZMQ execution behavior, use reproducible upstream
    commits, compile the UE for an explicit CPU baseline, and test the
    gNB/UE ZMQ pair before publishing a release.
 
 ## Next Experiments
 
-- Capture a debug-instrumented `rel-0.4.0`/`rel-0.4.0` baseline and compare
-  its derived SSB parameters and first successful UE synchronization events
-  with the `rel-0.8.0` failure.
+- Run the current Docker packaging with known-good gNB commit `2be82d8`
+  against the `rel-0.4.0` UE to separate source changes from packaging and
+  toolchain changes.
+- Test the current release with the ZMQ execution change from upstream
+  commit `eee28f964` reverted.
 - Build a UE image with automatic ISA detection disabled or with an explicit
   conservative x86-64 target, then test it repeatedly across hosted runners.
 - Build the gNB from the last known-compatible upstream revision while
