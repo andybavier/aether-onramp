@@ -20,7 +20,8 @@ The upstream OnRamp fix is tracked in
 | `rel-0.5.0` with single lower-PHY profile | `rel-0.4.0` | Fail: UE never attaches | [run 27040783982](https://github.com/andybavier/aether-onramp/actions/runs/27040783982) |
 | `rel-0.8.0` with single lower-PHY profile | `rel-0.4.0` | Fail: no cell acquisition | [run 27041735556](https://github.com/andybavier/aether-onramp/actions/runs/27041735556) |
 | `rel-0.4.0` with debug diagnostics | `rel-0.4.0` | Pass: complete attachment | [run 27042709986](https://github.com/andybavier/aether-onramp/actions/runs/27042709986) |
-| Current Dockerfile built from gNB commit `2be82d8` | `rel-0.4.0` | Pending | Test branch |
+| Current Dockerfile, gNB commit `2be82d8`, `MARCH=native` | `rel-0.4.0` | Fail: gNB exits with `SIGILL` | [run 27046765748](https://github.com/andybavier/aether-onramp/actions/runs/27046765748) |
+| Current Dockerfile, gNB commit `2be82d8`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pending | Test branch |
 
 ## Timeline
 
@@ -40,6 +41,9 @@ The upstream OnRamp fix is tracked in
 - June 5, 2026: the current `srsRAN-docker` Dockerfile successfully built
   known-good gNB commit `2be82d8` as
   `ghcr.io/andybavier/srsran-gnb:test-2be82d8`.
+- June 5, 2026: that image repeatedly exited with status 132 (`SIGILL`) on
+  the OnRamp CI runner because it was compiled with `MARCH=native` on a
+  different hosted runner CPU.
 
 ## Confirmed Findings
 
@@ -80,6 +84,20 @@ The `SIGILL` is therefore not established as a code change introduced in
 `rel-0.5.0`. It may be a CPU portability problem shared by these images that
 only appears on some hosted runner CPUs, or another runner-specific failure.
 The exact cause remains unresolved.
+
+### Current Dockerfile with known-good gNB source
+
+Building gNB commit `2be82d8` with the current Dockerfile succeeded, but the
+resulting container entered a restart loop with exit status 132 before
+writing logs or opening PCAP files. The current Dockerfile defaults to
+`MARCH=native`, so the binary was specialized for the image-build runner and
+then executed on a different hosted CPU.
+
+This reproduces the same class of `SIGILL` portability failure previously
+seen in the `rel-0.5.0` UE. It does not yet test whether current packaging can
+run the old gNB radio path. A follow-up image uses `MARCH=x86-64-v2`, which
+retains the SSE4.1 feature required for this older source to compile while
+avoiding AVX/AVX2 assumptions.
 
 ### `rel-0.5.0` gNB
 
@@ -224,9 +242,9 @@ all-`rel-0.5.0` test, `community.docker.docker_container_exec` returned no
 
 ## Next Experiments
 
-- Run the current Docker packaging with known-good gNB commit `2be82d8`
-  against the `rel-0.4.0` UE to separate source changes from packaging and
-  toolchain changes.
+- Run the `MARCH=x86-64-v2` build of known-good gNB commit `2be82d8` against
+  the `rel-0.4.0` UE to separate source changes from packaging and toolchain
+  changes.
 - Test the current release with the ZMQ execution change from upstream
   commit `eee28f964` reverted.
 - Build a UE image with automatic ISA detection disabled or with an explicit
