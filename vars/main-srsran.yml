@@ -46,8 +46,8 @@ core:
 srsran:
   docker:
     container:
-      # Test known-good gNB source with the current container build.
-      gnb_image: ghcr.io/andybavier/srsran-gnb:test-2be82d8-x86-64-v2
+      # Self-hosted baseline: verify the known-good 0.4.0 image pair works.
+      gnb_image: aetherproject/srsran-gnb:rel-0.4.0
       ue_image: aetherproject/srsran-ue:rel-0.4.0
     network:
       name: host
