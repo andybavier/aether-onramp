@@ -47,11 +47,11 @@ stage_status() {
   echo "srsRAN Attach Stage Summary"
   echo
 
-  cell_up_detail="$(first_match "$gnb_log" 'Connected to AMF|Cell scheduling was activated')"
-  if has_pattern "$gnb_log" 'Connected to AMF' && has_pattern "$gnb_log" 'Cell scheduling was activated'; then
+  cell_up_detail="$(first_match "$gnb_log" 'Connected to AMF')"
+  if has_pattern "$gnb_log" 'Connected to AMF' || has_pattern "$gnb_log" 'Cell scheduling was activated'; then
     stage_status "yes" "cell_up" "$cell_up_detail"
   else
-    stage_status "no" "cell_up" "$cell_up_detail"
+    stage_status "no" "cell_up" "${cell_up_detail:-$(first_match "$gnb_log" 'Cell scheduling was activated')}"
   fi
 
   ue_attach_detail="$(first_match "$ue_log" 'Attaching UE')" 
@@ -61,8 +61,45 @@ stage_status() {
     stage_status "no" "ue_attach_started"
   fi
 
-  rrc_detail="$(first_match "$gnb_log" 'RRCSetupRequest|Received Msg3|PRACH')"
-  if has_pattern "$gnb_log" 'RRCSetupRequest|Received Msg3|PRACH'; then
+  prach_detail="$(first_match "$gnb_log" '\[PHY.*PRACH: rsi=|\- PRACH: slot=')"
+  if has_pattern "$gnb_log" '\[PHY.*PRACH: rsi=|\- PRACH: slot='; then
+    stage_status "yes" "rach_prach_seen" "$prach_detail"
+  else
+    stage_status "no" "rach_prach_seen"
+  fi
+
+  rar_detail="$(first_match "$gnb_log" '\- RAR PDSCH:|Random Access Response')"
+  if has_pattern "$gnb_log" '\- RAR PDSCH:|Random Access Response'; then
+    stage_status "yes" "rach_rar_sent" "$rar_detail"
+  else
+    stage_status "no" "rach_rar_sent"
+  fi
+
+  msg3_detail="$(first_match "$gnb_log" 'Received Msg3')"
+  if has_pattern "$gnb_log" 'Received Msg3'; then
+    stage_status "yes" "rach_msg3_seen" "$msg3_detail"
+  else
+    stage_status "no" "rach_msg3_seen"
+  fi
+
+  rrc_req_detail="$(first_match "$gnb_log" 'RRCSetupRequest|RRC Setup Request')"
+  if has_pattern "$gnb_log" 'RRCSetupRequest|RRC Setup Request'; then
+    stage_status "yes" "rrc_setup_request" "$rrc_req_detail"
+  else
+    stage_status "no" "rrc_setup_request"
+  fi
+
+  rrc_resp_detail="$(first_match "$gnb_log" 'RRC Setup Procedure.*finished successfully|RRCSetup')"
+  if has_pattern "$gnb_log" 'RRC Setup Procedure.*finished successfully|RRCSetup'; then
+    stage_status "yes" "rrc_setup_response" "$rrc_resp_detail"
+  elif has_pattern "$ue_internal_log" 'RRC Setup Procedure.*finished successfully'; then
+    stage_status "yes" "rrc_setup_response" "$(first_match "$ue_internal_log" 'RRC Setup Procedure.*finished successfully')"
+  else
+    stage_status "no" "rrc_setup_response"
+  fi
+
+  rrc_detail="$(first_match "$gnb_log" 'RRCSetupRequest|Received Msg3|\[PHY.*PRACH: rsi=|\- RAR PDSCH:')"
+  if has_pattern "$gnb_log" 'RRCSetupRequest|Received Msg3|\[PHY.*PRACH: rsi=|\- RAR PDSCH:'; then
     stage_status "yes" "rrc_setup_started" "$rrc_detail"
   else
     stage_status "no" "rrc_setup_started"
@@ -84,8 +121,8 @@ stage_status() {
     stage_status "no" "nas_security"
   fi
 
-  reg_detail="$(first_match "$ue_internal_log" 'Handling Registration Accept|Changed to mm5g state: REGISTERED|Sending Registration Complete')"
-  if has_pattern "$ue_internal_log" 'Handling Registration Accept|Changed to mm5g state: REGISTERED|Sending Registration Complete' || \
+  reg_detail="$(first_match "$ue_internal_log" 'Handling Registration Accept|Sending Registration Complete')"
+  if has_pattern "$ue_internal_log" 'Handling Registration Accept|Sending Registration Complete' || \
      has_pattern "$amf_log" 'Handle Registration Complete'; then
     stage_status "yes" "registration_complete" "${reg_detail:-$(first_match "$amf_log" 'Handle Registration Complete')}"
   else
