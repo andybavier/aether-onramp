@@ -136,6 +136,7 @@ jobs:
         run: |
           mkdir -p logs
           ${{ inputs.extra_log_commands }}
+          bash .github/scripts/collect-host-diagnostics.sh logs "${{ inputs.log_prefix }}"
           bash .github/scripts/collect-core-logs.sh logs "${{ inputs.log_prefix }}"
 
       - name: Archive Artifacts
