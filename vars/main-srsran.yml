@@ -46,9 +46,9 @@ core:
 srsran:
   docker:
     container:
-      # Self-hosted baseline: verify the known-good 0.4.0 image pair works.
-      gnb_image: aetherproject/srsran-gnb:rel-0.4.0
-      ue_image: aetherproject/srsran-ue:rel-0.4.0
+      # Self-hosted baseline: test portable 0.4.0-equivalent gNB and UE images.
+      gnb_image: ghcr.io/andybavier/srsran-gnb:test-2be82d8-x86-64-v2
+      ue_image: ghcr.io/andybavier/srsran-ue:test-eea87b1-x86-64-v2
     network:
       name: host
   simulation: true
