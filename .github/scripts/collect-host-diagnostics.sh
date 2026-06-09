@@ -48,14 +48,20 @@ capture_to_file "${output_dir}/${file_prefix}_ip_addr.log" ip addr
 capture_to_file "${output_dir}/${file_prefix}_ip_route.log" ip route
 capture_to_file "${output_dir}/${file_prefix}_sysctl.log" sysctl \
   net.core.rmem_max \
+  net.core.rmem_default \
   net.core.wmem_max \
+  net.core.wmem_default \
   net.ipv4.ip_forward \
   net.ipv4.conf.all.rp_filter \
   net.ipv4.conf.default.rp_filter
+capture_shell_to_file "${output_dir}/${file_prefix}_cpu_governor.log" \
+  "cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 2>/dev/null || true"
+capture_shell_to_file "${output_dir}/${file_prefix}_drm_kms_poll.log" \
+  "cat /sys/module/drm_kms_helper/parameters/poll 2>/dev/null || true"
 capture_shell_to_file "${output_dir}/${file_prefix}_iptables.log" "iptables-save || true"
 capture_shell_to_file "${output_dir}/${file_prefix}_nft.log" "nft list ruleset || true"
 capture_shell_to_file "${output_dir}/${file_prefix}_dmesg_filtered.log" \
-  "dmesg | rg -i 'illegal instruction|invalid opcode|segfault|oom|killed process|docker|containerd|veth|bridge|netfilter|conntrack' || true"
+  "dmesg | grep -Ei 'illegal instruction|invalid opcode|segfault|oom|killed process|docker|containerd|veth|bridge|netfilter|conntrack' || true"
 capture_shell_to_file "${output_dir}/${file_prefix}_journal_docker.log" \
   "journalctl -u docker --no-pager -n 400 || true"
 capture_shell_to_file "${output_dir}/${file_prefix}_journal_containerd.log" \

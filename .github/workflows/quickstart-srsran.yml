@@ -11,14 +11,14 @@ on:
       agent_label:
         description: "Label for selecting runner (if using self-hosted)"
         required: false
-        default: "ubuntu-latest"
+        default: "ubuntu-24.04"
         type: string
 
 jobs:
   quickstart-srsran:
     uses: ./.github/workflows/reusable-quickstart.yml
     with:
-      agent_label: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
+      agent_label: ${{ github.event.inputs.agent_label || 'ubuntu-24.04' }}
       target_group: srsran_nodes
       vars_template: vars/main-srsran.yml
       configure_commands: |
@@ -31,6 +31,8 @@ jobs:
         sed -i "s|10.76.28.115|$MYIP|" "$VARS_MAIN"
         sed -i "s|10.76.28.0/24|$MYIPNET|" "$VARS_MAIN"
         git diff "$VARS_MAIN"
+      prepare_commands: |
+        bash .github/scripts/apply-ocudu-performance.sh
       install_commands: |
         make aether-k8s-install
         make aether-5gc-install

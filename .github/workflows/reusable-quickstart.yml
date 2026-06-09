@@ -23,6 +23,11 @@ on:
         description: Shell commands to customize vars/main.yml after network detection
         required: true
         type: string
+      prepare_commands:
+        description: Optional shell commands to tune the host before installation
+        required: false
+        default: ""
+        type: string
       install_commands:
         description: Shell commands that install the scenario components
         required: true
@@ -111,6 +116,11 @@ jobs:
           ${{ inputs.configure_commands }}
 
           make aether-pingall
+
+      - name: Prepare Host
+        if: ${{ inputs.prepare_commands != '' }}
+        run: |
+          ${{ inputs.prepare_commands }}
 
       - name: Install Aether
         run: |
