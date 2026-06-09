@@ -46,8 +46,8 @@ core:
 srsran:
   docker:
     container:
-      # Self-hosted baseline: test portable 0.4.0-equivalent gNB and UE images.
-      gnb_image: ghcr.io/andybavier/srsran-gnb:test-2be82d8-x86-64-v2
+      # Portable 0.8.0 gNB with the known-good portable 4G UE baseline.
+      gnb_image: ghcr.io/andybavier/srsran-gnb:test-d2f4b70-x86-64-v2
       ue_image: ghcr.io/andybavier/srsran-ue:test-eea87b1-x86-64-v2
     network:
       name: host
