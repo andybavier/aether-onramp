@@ -30,6 +30,7 @@ The upstream OnRamp fix is tracked in
 | Current Dockerfile, gNB commit `cdc93a6`, `MARCH=x86-64-v2` | `rel-0.4.0` | Fail: UE attach starts, gNB never sees PRACH | [run 27246422754](https://github.com/andybavier/aether-onramp/actions/runs/27246422754) |
 | Current Dockerfile, gNB commit `fc4e810`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pass | Final bisect branch run |
 | Current Dockerfile, gNB commit `11c9bba`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pass | Final bisect branch run |
+| Current Dockerfile, gNB commit `cdc93a6`, `MARCH=x86-64-v2`, `expert_execution.threads.main_pool.nof_threads: 4` | `rel-0.4.0` | Fail: runtime still instantiates 1 worker; UE attach starts, gNB never sees PRACH | [run 27292309635](https://github.com/andybavier/aether-onramp/actions/runs/27292309635) |
 
 ## Timeline
 
@@ -57,6 +58,10 @@ The upstream OnRamp fix is tracked in
   window from about 2,300 commits to an 18-commit ancestry path, then to a
   4-commit window, and finally identified the first bad gNB source commit as
   `cdc93a60920dfbb2727910f84966068b8e75004d`.
+- June 10, 2026: forcing `expert_execution.threads.main_pool.nof_threads: 4`
+  in the OnRamp gNB YAML did not restore the first bad bisect image. The
+  rendered config showed `nof_threads: 4`, but the runtime still
+  instantiated the main worker pool with only 1 worker.
 
 ## Confirmed Findings
 
@@ -204,6 +209,67 @@ In the corresponding attach-stage summary for the failing run, only
 `cell_up` and `ue_attach_started` are marked `yes`; every later stage remains
 `no`.
 
+### Worker-pool clamp on the first bad commit
+
+Inspection of the first bad merge range highlighted upstream commit
+`1e6baccc22e1499a2d3819556d4aebf14675af39`
+(`app: reduce min number of workers of the app`) as a likely contributor.
+That change reduces the minimum worker-pool size from 4 to 1 and also caps
+the pool against `avail_cpus - spare_cpus`, where `spare_cpus` becomes
+`min(avail_cpus, 3)`.
+
+On the GitHub-hosted runner, the gNB reports 4 CPUs available to the
+application. For the bad portable image, this implies:
+
+- `avail_cpus = 4`
+- `spare_cpus = 3`
+- maximum main-pool workers = `avail_cpus - spare_cpus = 1`
+
+This matches the observed runtime behavior exactly. In the failing portable
+`cdc93a6` run, the gNB logs:
+
+```text
+Worker pool "main_pool" instantiated with #workers=1
+Lower PHY in executor sequential baseband mode.
+```
+
+The same hosted runner and the same lower-PHY mode on the passing portable
+`11c9bba` run log:
+
+```text
+Worker pool "main_pool" instantiated with #workers=4
+Lower PHY in executor sequential baseband mode.
+```
+
+To test whether an explicit override could recover the bad image, OnRamp was
+changed to render:
+
+```yaml
+expert_execution:
+  threads:
+    main_pool:
+      nof_threads: 4
+```
+
+The bad-image proof run still failed, and the gNB log showed both of the
+following at once:
+
+- the rendered config contained `nof_threads: 4`; and
+- the instantiated worker pool still used `#workers=1`.
+
+This means the config knob was accepted by the parser but did not bypass the
+bad revision's worker-sizing logic. The failure signature remained unchanged:
+
+- the gNB connected to the AMF and activated cell scheduling;
+- the UE printed `Attaching UE...`;
+- the UE internal log stayed at initial `SYNC: state=IDLE`;
+- the gNB never logged PRACH detection; and
+- no later attach-stage milestones occurred.
+
+This does not prove that `1e6bacc` is the only root cause, but it is strong
+evidence that the new default worker-sizing behavior is part of the failure
+mechanism on small hosted runners.
+
 ## Container Build Changes
 
 The sibling `srsRAN-docker` repository has no `v0.4.0` Git tag. Its release
@@ -282,9 +348,13 @@ all-`rel-0.5.0` test, `community.docker.docker_container_exec` returned no
 5. A portable-image bisect identifies upstream commit
    `cdc93a60920dfbb2727910f84966068b8e75004d` as the first bad gNB source
    revision.
-6. Pinning both OnRamp images to `rel-0.4.0` is the appropriate short-term
+6. Within that bad merge range, the worker-sizing change in commit
+   `1e6baccc22e1499a2d3819556d4aebf14675af39` is a strong candidate: on a
+   4-vCPU hosted runner, the bad image still instantiates only 1 main-pool
+   worker even when OnRamp renders `nof_threads: 4`.
+7. Pinning both OnRamp images to `rel-0.4.0` is the appropriate short-term
    recovery.
-7. The durable fixes belong in `srsRAN-docker` and srsRAN Project: restore
+8. The durable fixes belong in `srsRAN-docker` and srsRAN Project: restore
    working ZMQ execution behavior, use reproducible upstream
    commits, compile the UE for an explicit CPU baseline, and test the
    gNB/UE ZMQ pair before publishing a release.
@@ -294,6 +364,9 @@ all-`rel-0.5.0` test, `community.docker.docker_container_exec` returned no
 - Inspect commit `cdc93a60920dfbb2727910f84966068b8e75004d` directly and
   compare it against parent commit `11c9bbabb69873752500d676f55e0034f6caa5c5`,
   focusing on ZMQ, lower-PHY scheduling, PRACH, and radio sample-flow changes.
+- Rebuild the first bad portable image with commit
+  `1e6baccc22e1499a2d3819556d4aebf14675af39` reverted, or patch that logic to
+  honor explicit `nof_threads`, then rerun the hosted ZMQ attach test.
 - Test the current release with the relevant part of commit
   `cdc93a60920dfbb2727910f84966068b8e75004d` reverted, or with the earlier ZMQ
   execution behavior restored.
