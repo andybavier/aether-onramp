@@ -51,3 +51,8 @@ pcap:
   mac_filename: /tmp/gnb_mac.pcap   # Path where the MAC PCAP is stored.
   ngap_enable: enable               # Capture core signaling for attachment diagnosis.
   ngap_filename: /tmp/gnb_ngap.pcap # Path where the NGAP PCAP is stored.
+
+expert_execution:
+  threads:
+    main_pool:
+      nof_threads: 4                # Keep enough workers for ZMQ + sequential lower-PHY on small hosted runners.
