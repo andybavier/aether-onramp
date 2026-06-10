@@ -46,8 +46,8 @@ core:
 srsran:
   docker:
     container:
-      # Next bisect portable gNB image with the known-good portable 4G UE baseline.
-      gnb_image: ghcr.io/andybavier/srsran-gnb:bisect-cdc93a6-x86-64-v2
+      # Midpoint bisect portable gNB image with the known-good portable 4G UE baseline.
+      gnb_image: ghcr.io/andybavier/srsran-gnb:bisect-fc4e810-x86-64-v2
       ue_image: ghcr.io/andybavier/srsran-ue:test-eea87b1-x86-64-v2
     network:
       name: host
