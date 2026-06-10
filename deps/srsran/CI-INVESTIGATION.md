@@ -6,6 +6,10 @@ The Aether OnRamp srsRAN workflow is reliable with the
 `aetherproject/srsran-{gnb,ue}:rel-0.4.0` image pair. Newer image pairs tested
 so far do not work on GitHub-hosted runners.
 
+A portable-image bisect of upstream `srsRAN_Project` now isolates the first
+bad gNB source revision to commit
+`cdc93a60920dfbb2727910f84966068b8e75004d`.
+
 The upstream OnRamp fix is tracked in
 [opennetworkinglab/aether-onramp#221](https://github.com/opennetworkinglab/aether-onramp/pull/221).
 
@@ -21,7 +25,11 @@ The upstream OnRamp fix is tracked in
 | `rel-0.8.0` with single lower-PHY profile | `rel-0.4.0` | Fail: no cell acquisition | [run 27041735556](https://github.com/andybavier/aether-onramp/actions/runs/27041735556) |
 | `rel-0.4.0` with debug diagnostics | `rel-0.4.0` | Pass: complete attachment | [run 27042709986](https://github.com/andybavier/aether-onramp/actions/runs/27042709986) |
 | Current Dockerfile, gNB commit `2be82d8`, `MARCH=native` | `rel-0.4.0` | Fail: gNB exits with `SIGILL` | [run 27046765748](https://github.com/andybavier/aether-onramp/actions/runs/27046765748) |
-| Current Dockerfile, gNB commit `2be82d8`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pending | Test branch |
+| Current Dockerfile, gNB commit `2be82d8`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pass | [run 27243102500](https://github.com/andybavier/aether-onramp/actions/runs/27243102500) |
+| Current Dockerfile, gNB commit `d8bfdc9`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pass | Midpoint portable bisect run |
+| Current Dockerfile, gNB commit `cdc93a6`, `MARCH=x86-64-v2` | `rel-0.4.0` | Fail: UE attach starts, gNB never sees PRACH | [run 27246422754](https://github.com/andybavier/aether-onramp/actions/runs/27246422754) |
+| Current Dockerfile, gNB commit `fc4e810`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pass | Final bisect branch run |
+| Current Dockerfile, gNB commit `11c9bba`, `MARCH=x86-64-v2` | `rel-0.4.0` | Pass | Final bisect branch run |
 
 ## Timeline
 
@@ -44,6 +52,11 @@ The upstream OnRamp fix is tracked in
 - June 5, 2026: that image repeatedly exited with status 132 (`SIGILL`) on
   the OnRamp CI runner because it was compiled with `MARCH=native` on a
   different hosted runner CPU.
+- June 9-10, 2026: rebuilding portable (`MARCH=x86-64-v2`) bisect images and
+  testing them against the known-good portable UE reduced the upstream search
+  window from about 2,300 commits to an 18-commit ancestry path, then to a
+  4-commit window, and finally identified the first bad gNB source commit as
+  `cdc93a60920dfbb2727910f84966068b8e75004d`.
 
 ## Confirmed Findings
 
@@ -161,6 +174,36 @@ This is direct evidence that the attachment regression is caused by the
 newer gNB's ZMQ lower-PHY execution path rather than by RF configuration,
 SSB derivation, UE/gNB version skew, or insufficient startup time.
 
+### Portable-image bisect result
+
+Rebuilding the gNB with the current `srsRAN-docker` Dockerfile but with
+`MARCH=x86-64-v2` removed the runner-to-runner `SIGILL` portability noise and
+made it possible to bisect the upstream gNB source directly.
+
+The decisive pass/fail chain was:
+
+- `2be82d8`: pass
+- `d8bfdc9`: pass
+- `fc4e810`: pass
+- `11c9bba`: pass
+- `cdc93a6`: fail
+- `d2f4b70`: fail
+
+This identifies `cdc93a60920dfbb2727910f84966068b8e75004d` as the first bad
+gNB source commit.
+
+Its failure mode matches the earlier `rel-0.7.0` and portable `rel-0.8.0`
+failures exactly:
+
+- the gNB connects to the AMF and activates cell scheduling;
+- the UE prints `Attaching UE...`;
+- the gNB never logs PRACH detection;
+- there is no RAR, no RRC setup, no NAS exchange, and no tunnel interface.
+
+In the corresponding attach-stage summary for the failing run, only
+`cell_up` and `ue_attach_started` are marked `yes`; every later stage remains
+`no`.
+
 ## Container Build Changes
 
 The sibling `srsRAN-docker` repository has no `v0.4.0` Git tag. Its release
@@ -173,7 +216,10 @@ downloaded gNB binary embeds its upstream source revision:
 - `rel-0.7.0` gNB: commit
   `d2f4b70dda8e2c557d5b05a0ac5f92dbddda19bc` from `release_25_10`
 
-These revisions are about 2,300 upstream commits apart.
+These revisions are about 2,300 upstream commits apart in the full repository,
+but they are only 18 commits apart on the direct ancestry path between the
+known-good and known-bad source revisions. That narrow ancestry path made the
+portable-image bisect practical.
 
 By `v0.5.0`, the build had changed in several relevant ways:
 
@@ -233,26 +279,29 @@ all-`rel-0.5.0` test, `community.docker.docker_container_exec` returned no
    UE using the current ZMQ configuration.
 4. The newer gNB forces ZMQ onto the sequential lower-PHY executor path,
    while the known-good gNB forces ZMQ onto its internal blocking path.
-5. Pinning both OnRamp images to `rel-0.4.0` is the appropriate short-term
+5. A portable-image bisect identifies upstream commit
+   `cdc93a60920dfbb2727910f84966068b8e75004d` as the first bad gNB source
+   revision.
+6. Pinning both OnRamp images to `rel-0.4.0` is the appropriate short-term
    recovery.
-6. The durable fixes belong in `srsRAN-docker` and srsRAN Project: restore
+7. The durable fixes belong in `srsRAN-docker` and srsRAN Project: restore
    working ZMQ execution behavior, use reproducible upstream
    commits, compile the UE for an explicit CPU baseline, and test the
    gNB/UE ZMQ pair before publishing a release.
 
 ## Next Experiments
 
-- Run the `MARCH=x86-64-v2` build of known-good gNB commit `2be82d8` against
-  the `rel-0.4.0` UE to separate source changes from packaging and toolchain
-  changes.
-- Test the current release with the ZMQ execution change from upstream
-  commit `eee28f964` reverted.
+- Inspect commit `cdc93a60920dfbb2727910f84966068b8e75004d` directly and
+  compare it against parent commit `11c9bbabb69873752500d676f55e0034f6caa5c5`,
+  focusing on ZMQ, lower-PHY scheduling, PRACH, and radio sample-flow changes.
+- Test the current release with the relevant part of commit
+  `cdc93a60920dfbb2727910f84966068b8e75004d` reverted, or with the earlier ZMQ
+  execution behavior restored.
 - Build a UE image with automatic ISA detection disabled or with an explicit
   conservative x86-64 target, then test it repeatedly across hosted runners.
-- Build the gNB from the last known-compatible upstream revision while
-  retaining the newer Dockerfile and labels.
-- Bisect srsRAN Project revisions between the `rel-0.4.0` build and
-  `release_25_10` to find the ZMQ compatibility break.
+- Build the gNB from the last known-compatible upstream revision
+  `11c9bbabb69873752500d676f55e0034f6caa5c5` while retaining the newer
+  Dockerfile and labels.
 - Test the newer gNB with a larger runner to separate scheduling/resource
   issues from protocol compatibility.
 - Add a release smoke test in `srsRAN-docker` that starts the published gNB
