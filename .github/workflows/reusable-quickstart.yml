@@ -23,6 +23,11 @@ on:
         description: Shell commands to customize vars/main.yml after network detection
         required: true
         type: string
+      prepare_commands:
+        description: Optional shell commands to tune the host before installation
+        required: false
+        default: ""
+        type: string
       install_commands:
         description: Shell commands that install the scenario components
         required: true
@@ -112,6 +117,11 @@ jobs:
 
           make aether-pingall
 
+      - name: Prepare Host
+        if: ${{ inputs.prepare_commands != '' }}
+        run: |
+          ${{ inputs.prepare_commands }}
+
       - name: Install Aether
         run: |
           ${{ inputs.install_commands }}
@@ -135,9 +145,10 @@ jobs:
         if: always()
         run: |
           mkdir -p logs
-          cp vars/main.yml "logs/${{ inputs.log_prefix }}_vars_main.yml" 2>/dev/null || echo "No vars/main.yml found"
           ${{ inputs.extra_log_commands }}
+          bash .github/scripts/collect-host-diagnostics.sh logs "${{ inputs.log_prefix }}"
           bash .github/scripts/collect-core-logs.sh logs "${{ inputs.log_prefix }}"
+          bash .github/scripts/summarize-srsran-attach.sh logs "${{ inputs.log_prefix }}" || true
 
       - name: Archive Artifacts
         if: always()
@@ -146,7 +157,7 @@ jobs:
           name: ${{ inputs.artifact_name }}
           path: |
             logs/*.log
-            logs/*.yml
+            logs/*.pcap
           if-no-files-found: ignore
 
       - name: Cleanup
