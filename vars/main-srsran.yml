@@ -46,7 +46,7 @@ core:
 srsran:
   docker:
     container:
-      gnb_image: aetherproject/srsran-gnb:rel-0.8.1
+      gnb_image: ghcr.io/andybavier/srsran-gnb:test-portable-march
       ue_image: aetherproject/srsran-ue:rel-0.8.1
     network:
       name: host

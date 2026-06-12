@@ -46,7 +46,7 @@ core:
 ocudu:
   docker:
     container:
-      gnb_image: aetherproject/ocudu:rel-0.8.1
+      gnb_image: ghcr.io/andybavier/ocudu:test-portable-march
       ue_image: aetherproject/srsran-ue:rel-0.8.1
     network:
       name: host
