@@ -449,13 +449,20 @@ omec-user-plane:
     enabled: true
   resources:
     enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
-  # images:
-  #   repository: ""
-  #   tags:
-  #     bess: <bess image tag>
-  #     pfcpiface: <pfcp image tag>
-  #     tools: <aether-pod-init image tag>
+{% if core.upf.images is defined %}
+  images:
+    repository: "{{ core.upf.images.repository }}"
+    tags:
+      bess: "{{ core.upf.images.tags.bess }}"
+      pfcp: "{{ core.upf.images.tags.pfcp }}"
+{% endif %}
   config:
+{% if core.upf.images is defined %}
+    # The test registry contains the UPF images but not the optional pod-init
+    # helper used for gratuitous ARP announcements.
+    gratuitousArp:
+      enabled: false
+{% endif %}
     upf:
       name: "aether-upf"
       privileged: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
