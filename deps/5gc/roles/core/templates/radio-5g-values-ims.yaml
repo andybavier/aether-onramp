@@ -345,12 +345,11 @@ omec-user-plane:
     enabled: true
   resources:
     enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
-  # images:
-  #   repository: ""
-  #   tags:
-  #     bess: <bess image tag>
-  #     pfcpiface: <pfcp image tag>
-  #     tools: <aether-pod-init image tag>
+  # Test the UPF+BESS integration release in the embedded UPF.
+  images:
+    tags:
+      bess: upf-bess:rel-2.6.0
+      pfcp: upf-pfcp:rel-2.6.0
   config:
     upf:
       name: "aether-upf"
